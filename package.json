@@ -34,6 +34,7 @@
     "express": "^4.16.2",
     "node-sp-auth-config": "^2.1.1",
     "socket.io": "^2.0.4",
+    "sp-download": "^1.0.1",
     "sp-request": "^2.1.2"
   },
   "devDependencies": {

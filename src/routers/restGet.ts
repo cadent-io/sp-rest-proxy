@@ -1,6 +1,10 @@
 import { ProxyUtils } from '../utils';
 import { IProxyContext, IProxySettings } from '../interfaces';
 import { ISPRequest } from 'sp-request';
+import * as fs from 'fs';
+import { Download, IAuthOptions } from 'sp-download';
+import * as path from 'path';
+import { Cpass } from 'cpass';
 import { Request, Response, NextFunction } from 'express';
 
 export class RestGetRouter {
@@ -49,6 +53,41 @@ export class RestGetRouter {
       console.log(JSON.stringify(req.headers, null, 2));
     }
 
+   if(endpointUrl.indexOf('GetFileByServerRelativeUrl') !== -1) {
+
+    let ret = ""
+    if ( /'/.test( endpointUrl ) ){
+      ret = endpointUrl.match( /'(.*?)'/ )[1];
+    } else {
+      ret = endpointUrl;
+    }
+    ret = ret.replace(/%20/g, " ")
+    
+    var fileName = ret.split("/").pop();
+
+    const cpass = new Cpass();
+    let context: IAuthOptions;
+    context = require(path.resolve("./config/private.json"));
+    (context as any).password = (context as any).password && cpass.decode((context as any).password);
+    const download = new Download(context);
+
+    let filePathToDownload: string = "https://chatspaceio.sharepoint.com"+ret //sites/ChatSpace/Shared Documents/test doc.docx"
+    
+    let saveToPath: string = 'files/';
+    
+
+    download.downloadFile(filePathToDownload, saveToPath)
+      .then(savedToPath => {
+        console.log(`File has been downloaded to ${savedToPath}`);
+        res.sendFile(fileName, { root: path.join(__dirname, '../../files') });
+      })
+      .catch(error => {
+        console.log(error);
+      });
+
+
+   }
+   else {
     this.spr.get(endpointUrl, {
       headers: requestHeadersPass,
       agent: this.util.isUrlHttps(endpointUrl) ? this.settings.agent : undefined
@@ -58,11 +97,14 @@ export class RestGetRouter {
           console.log(response.statusCode, response.body);
         }
         res.status(response.statusCode);
+        //if(response.headers["content-type"] == "application/octet-stream") {
         res.json(response.body);
+        
       })
       .catch((err: any) => {
         res.status(err.statusCode >= 100 && err.statusCode < 600 ? err.statusCode : 500);
         res.send(err.message);
       });
+    }
   }
 }
